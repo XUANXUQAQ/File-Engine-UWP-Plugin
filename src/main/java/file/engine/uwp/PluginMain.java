@@ -1,12 +1,41 @@
-package file.engine.example;
+package file.engine.uwp;
+
+import file.engine.uwp.info.UWPInfo;
+import file.engine.uwp.utils.*;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
+
+import static file.engine.uwp.utils.RegexUtil.semicolon;
 
 public class PluginMain extends Plugin {
+
+    private ConcurrentHashMap<String, UWPInfo> uwpInfoMap = new ConcurrentHashMap<>();
+    private String searchText;
+    private String[] searchCase;
+    private String[] keywords;
+    private long startSearchTime;
+    private boolean isStartSearch = false;
+    private final ExecutorService threadPool = Executors.newCachedThreadPool();
+    private final ImageIcon pluginIcon = new ImageIcon(Objects.requireNonNull(this.getClass().getResource("/grid.png")));
+    private boolean exitFlag = false;
+    private Color backgroundColor;
+    private Color labelChosenColor;
+    private Color labelFontColor;
+    private Color highLightColor;
+    private int pluginIconSideLength = 0;
 
     /**
      * 当用户修改FIle-Engine的设置后，将调用此函数。
@@ -15,7 +44,10 @@ public class PluginMain extends Plugin {
      */
     @Override
     public void configsChanged(Map<String, Object> configs) {
-
+        backgroundColor = new Color((Integer) configs.get("defaultBackground"));
+        labelChosenColor = new Color((Integer) configs.get("labelColor"));
+        labelFontColor = new Color((Integer) configs.get("fontColor"));
+        highLightColor = new Color((Integer) configs.get("fontColorWithCoverage"));
     }
 
     /**
@@ -25,7 +57,29 @@ public class PluginMain extends Plugin {
      */
     @Override
     public void textChanged(String text) {
-
+        if (!text.isEmpty()) {
+            clearResultQueue();
+            final int i = text.lastIndexOf('|');
+            if (i == -1) {
+                searchText = text;
+                searchCase = null;
+            } else {
+                searchText = text.substring(0, i);
+                var searchCaseStr = text.substring(i + 1);
+                if (searchCaseStr.isEmpty()) {
+                    searchCase = null;
+                } else {
+                    String[] tmpSearchCase = semicolon.split(searchCaseStr);
+                    searchCase = new String[tmpSearchCase.length];
+                    for (int j = 0; j < tmpSearchCase.length; j++) {
+                        searchCase[j] = tmpSearchCase[j].trim();
+                    }
+                }
+            }
+            keywords = semicolon.split(searchText);
+            startSearchTime = System.currentTimeMillis();
+            isStartSearch = true;
+        }
     }
 
     /**
@@ -34,7 +88,58 @@ public class PluginMain extends Plugin {
      */
     @Override
     public void loadPlugin(Map<String, Object> configs) throws RuntimeException {
-
+        checkEvent("file.engine.event.handler.impl.database.PrepareSearchEvent", new HashMap<>());
+        backgroundColor = new Color((Integer) configs.get("defaultBackground"));
+        labelChosenColor = new Color((Integer) configs.get("labelColor"));
+        labelFontColor = new Color((Integer) configs.get("fontColor"));
+        highLightColor = new Color((Integer) configs.get("fontColorWithCoverage"));
+        threadPool.submit(() -> {
+            // 每隔5分钟更新uwp应用列表
+            long startFetchUwpInfoTime = 0;
+            final long timeout = 5 * 60 * 1000; // 5 min
+            while (!exitFlag) {
+                if (System.currentTimeMillis() - startFetchUwpInfoTime > timeout) {
+                    startFetchUwpInfoTime = System.currentTimeMillis();
+                    uwpInfoMap = UWPInfoUtil.getUwpInfo(uwpInfoMap);
+                    for (UWPInfo v : uwpInfoMap.values()) {
+                        if (v.getIcon() == null) {
+                            try {
+                                ImageIcon icon = GetIconUtil.getIcon(v);
+                                v.setIcon(icon);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        if (exitFlag) {
+                            break;
+                        }
+                    }
+                }
+                try {
+                    TimeUnit.MILLISECONDS.sleep(50);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        threadPool.submit(() -> {
+            final long timeout = 100;
+            while (!exitFlag) {
+                if (isStartSearch && System.currentTimeMillis() - startSearchTime > timeout) {
+                    isStartSearch = false;
+                    for (Map.Entry<String, UWPInfo> uwpInfo : uwpInfoMap.entrySet()) {
+                        if (PathMatchUtil.check(uwpInfo.getValue().getDisplayName(), searchCase, searchText, keywords)) {
+                            addToResultQueue(uwpInfo.getKey());
+                        }
+                    }
+                }
+                try {
+                    TimeUnit.MILLISECONDS.sleep(50);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
     }
 
     /**
@@ -42,7 +147,7 @@ public class PluginMain extends Plugin {
      */
     @Override
     public void unloadPlugin() {
-
+        exitFlag = true;
     }
 
     /**
@@ -54,7 +159,12 @@ public class PluginMain extends Plugin {
      */
     @Override
     public void keyReleased(KeyEvent e, String result) {
-
+        if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+            UWPInfo uwpInfo = uwpInfoMap.get(result);
+            if (uwpInfo != null) {
+                OpenUwpUtil.openUWP(uwpInfo.getFamilyName());
+            }
+        }
     }
 
     /**
@@ -89,7 +199,12 @@ public class PluginMain extends Plugin {
      */
     @Override
     public void mousePressed(MouseEvent e, String result) {
-
+        if (e.getClickCount() == 2) {
+            UWPInfo uwpInfo = uwpInfoMap.get(result);
+            if (uwpInfo != null) {
+                OpenUwpUtil.openUWP(uwpInfo.getFamilyName());
+            }
+        }
     }
 
     /**
@@ -105,9 +220,10 @@ public class PluginMain extends Plugin {
 
     /**
      * 当File-Engine的搜索框被打开该方法将会被调用一次。并不需要进入插件模式。
-     * @param showingMode 显示模式
      *
-     * 目前File-Engine有两种模式：普通显示和贴靠资源管理器显示，对应的showingMode为 NORMAL_SHOWING， EXPLORER_ATTACH
+     * @param showingMode 显示模式
+     *                    <p>
+     *                    目前File-Engine有两种模式：普通显示和贴靠资源管理器显示，对应的showingMode为 NORMAL_SHOWING， EXPLORER_ATTACH
      */
     @Override
     public void searchBarVisible(String showingMode) {
@@ -122,7 +238,7 @@ public class PluginMain extends Plugin {
      */
     @Override
     public ImageIcon getPluginIcon() {
-        return null;
+        return pluginIcon;
     }
 
     /**
@@ -132,7 +248,7 @@ public class PluginMain extends Plugin {
      */
     @Override
     public String getOfficialSite() {
-        return null;
+        return "https://github.com/XUANXUQAQ/File-Engine-UWP-Plugin";
     }
 
     /**
@@ -142,7 +258,7 @@ public class PluginMain extends Plugin {
      */
     @Override
     public String getVersion() {
-        return null;
+        return VersionUtil._getPluginVersion();
     }
 
     /**
@@ -153,7 +269,7 @@ public class PluginMain extends Plugin {
      */
     @Override
     public String getDescription() {
-        return null;
+        return "该插件用于支持uwp应用搜索\n图标来自：https://fonts.google.com/icons?selected=Material%20Icons%3Agrid_view%3A";
     }
 
     /**
@@ -165,7 +281,7 @@ public class PluginMain extends Plugin {
     @Override
     @SuppressWarnings({"unused", "RedundantThrows"})
     public boolean isLatest() throws Exception {
-        return false;
+        return VersionUtil._isLatest();
     }
 
     /**
@@ -177,7 +293,7 @@ public class PluginMain extends Plugin {
      */
     @Override
     public String getUpdateURL() {
-        return null;
+        return VersionUtil._getUpdateURL();
     }
 
     /**
@@ -186,21 +302,43 @@ public class PluginMain extends Plugin {
      * @param result   current selected content.
      * @param label    需要显示的JLabel.
      * @param isChosen 如果当前label是目前被用户选中的，您应该将标签设置为不同的背景，背景颜色可以通过loadPlugins和configsChanged方法的参数获得。
-     *
-     * 您只能设置JLabel的图标、文本和背景，请不要设置其他属性，如border，name以及其他
+     *                 <p>
+     *                 您只能设置JLabel的图标、文本和背景，请不要设置其他属性，如border，name以及其他
      */
     @Override
     public void showResultOnLabel(String result, JLabel label, boolean isChosen) {
-
+        if (pluginIconSideLength == 0) {
+            pluginIconSideLength = label.getHeight() / 3;
+        }
+        UWPInfo uwpInfo = uwpInfoMap.get(result);
+        if (uwpInfo != null) {
+            String displayName = uwpInfo.getDisplayName();
+            String html = HighLightUtil.getHtml(displayName, keywords, labelFontColor, highLightColor);
+            label.setText(html);
+            ImageIcon icon = uwpInfo.getIcon();
+            if (icon == null) {
+                label.setIcon(pluginIcon);
+            } else {
+                icon = GetIconUtil.changeIcon(icon, pluginIconSideLength, pluginIconSideLength);
+                uwpInfo.setIcon(icon);
+                label.setIcon(icon);
+            }
+        }
+        if (isChosen) {
+            label.setBackground(labelChosenColor);
+        } else {
+            label.setBackground(backgroundColor);
+        }
     }
 
     /**
      * 获取插件的作者名，将会显示在插件的设置界面。
+     *
      * @return author name
      */
     @Override
     public String getAuthor() {
-        return null;
+        return "XUANXU";
     }
 
 
@@ -213,9 +351,28 @@ public class PluginMain extends Plugin {
      * @see #sendEventToFileEngine(String, Object...)
      * @see #sendEventToFileEngine(Event)
      */
+    @SuppressWarnings("unchecked")
     @Override
     public void eventProcessed(Class<?> c, Object eventInstance) {
-
+        if ("file.engine.event.handler.impl.database.PrepareSearchEvent".equals(c.getName())) {
+            try {
+                Class<?> superclass = c.getSuperclass();
+                Field searchTextField = superclass.getDeclaredField("searchText");
+                Field searchCaseField = superclass.getDeclaredField("searchCase");
+                Field keywordsField = superclass.getDeclaredField("keywords");
+                Supplier<String> searchTextSupplier = (Supplier<String>) searchTextField.get(eventInstance);
+                Supplier<String[]> searchCaseSupplier = (Supplier<String[]>) searchCaseField.get(eventInstance);
+                Supplier<String[]> keywordsSupplier = (Supplier<String[]>) keywordsField.get(eventInstance);
+                searchText = searchTextSupplier.get();
+                searchCase = searchCaseSupplier.get();
+                keywords = keywordsSupplier.get();
+                startSearchTime = System.currentTimeMillis();
+                isStartSearch = true;
+                clearResultQueue();
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     //--------------------------------------------------------------------------------------------------------------

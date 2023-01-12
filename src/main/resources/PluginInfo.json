@@ -1,5 +1,5 @@
 {
-  "className" : "file.engine.example.PluginMain",
-  "identifier" : "example",
-  "name" : "ExamplePlugin"
+  "className" : "file.engine.uwp.PluginMain",
+  "identifier" : "uwp",
+  "name" : "UWP"
 }
