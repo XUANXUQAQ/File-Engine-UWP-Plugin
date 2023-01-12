@@ -61,13 +61,13 @@ public class HighLightUtil {
      *
      * @return html
      */
-    public static String getHtml(String name, String[] keywords, Color normalColor, Color highLightColor) {
+    public static String getHtml(String name, String secondLine, String[] keywords, Color normalColor, Color highLightColor) {
         String colorHex = "#" + ColorUtil.parseColorHex(normalColor);
         String template = "<html><body style=\"color: " + colorHex + ";\">%s</body></html>";
         return String.format(template, "<div>" +
                 highLight(name, keywords, highLightColor) + "<br>" +
                 "<div>" +
-                "&gt;&gt;" + "UWP APP" +
+                secondLine +
                 "</div>" +
                 "</div>");
     }

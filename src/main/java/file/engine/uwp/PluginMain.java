@@ -313,7 +313,7 @@ public class PluginMain extends Plugin {
         UWPInfo uwpInfo = uwpInfoMap.get(result);
         if (uwpInfo != null) {
             String displayName = uwpInfo.getDisplayName();
-            String html = HighLightUtil.getHtml(displayName, keywords, labelFontColor, highLightColor);
+            String html = HighLightUtil.getHtml(displayName, uwpInfo.getName(), keywords, labelFontColor, highLightColor);
             label.setText(html);
             ImageIcon icon = uwpInfo.getIcon();
             if (icon == null) {
