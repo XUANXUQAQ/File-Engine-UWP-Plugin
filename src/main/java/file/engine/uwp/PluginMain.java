@@ -163,8 +163,8 @@ public class PluginMain extends Plugin {
         if (e.getKeyCode() == KeyEvent.VK_ENTER) {
             UWPInfo uwpInfo = uwpInfoMap.get(result);
             if (uwpInfo != null) {
-                OpenUwpUtil.openUWP(uwpInfo.getFamilyName());
                 sendEventToFileEngine("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent");
+                OpenUwpUtil.openUWP(uwpInfo);
             }
         }
     }
@@ -204,8 +204,8 @@ public class PluginMain extends Plugin {
         if (e.getClickCount() == 2) {
             UWPInfo uwpInfo = uwpInfoMap.get(result);
             if (uwpInfo != null) {
-                OpenUwpUtil.openUWP(uwpInfo.getFamilyName());
                 sendEventToFileEngine("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent");
+                OpenUwpUtil.openUWP(uwpInfo);
             }
         }
     }

@@ -81,6 +81,52 @@ public class UWPInfoUtil {
     }
 
     @SneakyThrows
+    @SuppressWarnings("DuplicatedCode")
+    public static File getAppManifest(UWPInfo uwpInfo) {
+        ProcessBuilder psProcessBuilder = new ProcessBuilder("powershell.exe", "Get-AppxPackage", "-Name", uwpInfo.getName());
+        Process psProcess = psProcessBuilder.start();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(psProcess.getInputStream(), System.getProperty("sun.jnu.encoding")))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isEmpty()) {
+                    continue;
+                }
+                // 开始获取
+                ArrayList<String> strings = new ArrayList<>();
+                strings.add(line);
+                while ((line = reader.readLine()) != null) {
+                    if (line.isEmpty()) {
+                        break;
+                    }
+                    strings.add(line);
+                }
+                int size = strings.size();
+                for (int i = 0; i < 11; i++) {
+                    StringBuilder eachInfo = new StringBuilder(strings.get(i));
+                    int j;
+                    for (j = i + 1; j < size; j++) {
+                        String nextStr = strings.get(j);
+                        if (!nextStr.contains(": ")) {
+                            eachInfo.append(nextStr.trim());
+                        } else {
+                            if (j != i + 1) {
+                                i = j;
+                            }
+                            break;
+                        }
+                    }
+                    String[] split = RegexUtil.getPattern(": ", 0).split(eachInfo);
+                    if ("InstallLocation".equals(split[0].trim()) && split.length > 1) {
+                        String installLocation = split[1].trim();
+                        return new File(installLocation, "AppxManifest.xml");
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    @SneakyThrows
     private static void injectField(UWPInfo entity, String name, String value) {
         Field declaredField = entity.getClass().getDeclaredField(name);
         declaredField.setAccessible(true);
