@@ -8,7 +8,7 @@ import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Field;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -88,7 +88,8 @@ public class PluginMain extends Plugin {
      */
     @Override
     public void loadPlugin(Map<String, Object> configs) throws RuntimeException {
-        checkEvent("file.engine.event.handler.impl.database.PrepareSearchEvent", new HashMap<>());
+        checkEvent("file.engine.event.handler.impl.database.PrepareSearchEvent", Collections.emptyMap());
+        checkEvent("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent", Collections.emptyMap());
         backgroundColor = new Color((Integer) configs.get("defaultBackground"));
         labelChosenColor = new Color((Integer) configs.get("labelColor"));
         labelFontColor = new Color((Integer) configs.get("fontColor"));
@@ -163,6 +164,7 @@ public class PluginMain extends Plugin {
             UWPInfo uwpInfo = uwpInfoMap.get(result);
             if (uwpInfo != null) {
                 OpenUwpUtil.openUWP(uwpInfo.getFamilyName());
+                sendEventToFileEngine("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent");
             }
         }
     }
@@ -203,6 +205,7 @@ public class PluginMain extends Plugin {
             UWPInfo uwpInfo = uwpInfoMap.get(result);
             if (uwpInfo != null) {
                 OpenUwpUtil.openUWP(uwpInfo.getFamilyName());
+                sendEventToFileEngine("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent");
             }
         }
     }
