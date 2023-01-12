@@ -82,7 +82,7 @@ public class UWPInfoUtil {
 
     @SneakyThrows
     @SuppressWarnings("DuplicatedCode")
-    public static File getAppManifest(UWPInfo uwpInfo) {
+    public static String getUwpDetail(UWPInfo uwpInfo, String key) {
         ProcessBuilder psProcessBuilder = new ProcessBuilder("powershell.exe", "Get-AppxPackage", "-Name", uwpInfo.getName());
         Process psProcess = psProcessBuilder.start();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(psProcess.getInputStream(), System.getProperty("sun.jnu.encoding")))) {
@@ -116,14 +116,13 @@ public class UWPInfoUtil {
                         }
                     }
                     String[] split = RegexUtil.getPattern(": ", 0).split(eachInfo);
-                    if ("InstallLocation".equals(split[0].trim()) && split.length > 1) {
-                        String installLocation = split[1].trim();
-                        return new File(installLocation, "AppxManifest.xml");
+                    if (key.equals(split[0].trim()) && split.length > 1) {
+                        return split[1].trim();
                     }
                 }
             }
         }
-        return null;
+        return "";
     }
 
     @SneakyThrows

@@ -18,14 +18,15 @@ public class GetIconUtil {
 
     @SneakyThrows
     public static ImageIcon getIcon(UWPInfo uwpInfo) {
-        File appManifest = UWPInfoUtil.getAppManifest(uwpInfo);
+        String installLocation = UWPInfoUtil.getUwpDetail(uwpInfo, "InstallLocation");
+        if (installLocation.isEmpty()) {
+            return null;
+        }
+        File appManifest = new File(installLocation, "AppxManifest.xml");
         return getIconFromManifest(appManifest);
     }
 
     private static ImageIcon getIconFromManifest(File appxManifest) throws DocumentException {
-        if (appxManifest == null) {
-            return null;
-        }
         String installLocation = appxManifest.getParentFile().getAbsolutePath();
         SAXReader saxReader = new SAXReader();
         Document doc = saxReader.read(appxManifest);

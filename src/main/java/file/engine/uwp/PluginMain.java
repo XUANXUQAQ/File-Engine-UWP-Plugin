@@ -7,6 +7,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.Map;
@@ -21,7 +22,6 @@ import java.util.function.Supplier;
 import static file.engine.uwp.utils.RegexUtil.semicolon;
 
 public class PluginMain extends Plugin {
-
     private ConcurrentHashMap<String, UWPInfo> uwpInfoMap = new ConcurrentHashMap<>();
     private String searchText;
     private String[] searchCase;
@@ -36,6 +36,8 @@ public class PluginMain extends Plugin {
     private Color labelFontColor;
     private Color highLightColor;
     private int pluginIconSideLength = 0;
+    @SuppressWarnings("FieldCanBeLocal")
+    private final String configsPath = "plugins/Plugin configuration files/uwp";
 
     /**
      * 当用户修改FIle-Engine的设置后，将调用此函数。
@@ -90,6 +92,20 @@ public class PluginMain extends Plugin {
     public void loadPlugin(Map<String, Object> configs) throws RuntimeException {
         checkEvent("file.engine.event.handler.impl.database.PrepareSearchEvent", Collections.emptyMap());
         checkEvent("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent", Collections.emptyMap());
+        File pluginFolder = new File(configsPath);
+        if (!pluginFolder.exists()) {
+            if (!pluginFolder.mkdirs()) {
+                throw new RuntimeException("mkdir " + pluginFolder + "failed.");
+            }
+        }
+        File dllFile = new File(pluginFolder, "getIndirectString.dll");
+        try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(dllFile));
+             BufferedInputStream in = new BufferedInputStream(Objects.requireNonNull(this.getClass().getResourceAsStream("/getIndirectString.dll")))) {
+            in.transferTo(out);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        System.load(dllFile.getAbsolutePath());
         backgroundColor = new Color((Integer) configs.get("defaultBackground"));
         labelChosenColor = new Color((Integer) configs.get("labelColor"));
         labelFontColor = new Color((Integer) configs.get("fontColor"));
