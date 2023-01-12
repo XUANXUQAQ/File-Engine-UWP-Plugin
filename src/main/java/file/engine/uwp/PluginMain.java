@@ -98,9 +98,9 @@ public class PluginMain extends Plugin {
                 throw new RuntimeException("mkdir " + pluginFolder + "failed.");
             }
         }
-        File dllFile = new File(pluginFolder, "getIndirectString.dll");
+        File dllFile = new File(pluginFolder, "GetIndirectString.dll");
         try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(dllFile));
-             BufferedInputStream in = new BufferedInputStream(Objects.requireNonNull(this.getClass().getResourceAsStream("/getIndirectString.dll")))) {
+             BufferedInputStream in = new BufferedInputStream(Objects.requireNonNull(this.getClass().getResourceAsStream("/GetIndirectString.dll")))) {
             in.transferTo(out);
         } catch (IOException e) {
             throw new RuntimeException(e);
