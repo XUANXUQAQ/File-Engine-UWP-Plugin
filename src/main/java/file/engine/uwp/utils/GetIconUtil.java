@@ -67,6 +67,7 @@ public class GetIconUtil {
                         File logoLocation = file.getParentFile();
                         String logoName = file.getName();
                         String logoNamePrefix = removeFileNameSuffix(logoName);
+                        logoNamePrefix += ".scale-";
                         File[] logoFiles = logoLocation.listFiles();
                         if (logoFiles == null || logoFiles.length == 0) {
                             return null;
