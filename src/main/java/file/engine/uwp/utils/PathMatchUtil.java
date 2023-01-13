@@ -57,15 +57,16 @@ public class PathMatchUtil {
         }
         for (String eachCase : searchCase) {
             switch (eachCase) {
-                case "full":
+                case "full" -> {
                     if (!searchText.equalsIgnoreCase(name)) {
                         return false;
                     }
-                    break;
-                case "case":
+                }
+                case "case" -> {
                     if (notMatched(name, false, keywords)) {
                         return false;
                     }
+                }
             }
         }
         //所有规则均已匹配

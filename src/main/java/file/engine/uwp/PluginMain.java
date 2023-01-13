@@ -18,8 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
-
-import static file.engine.uwp.utils.RegexUtil.semicolon;
+import java.util.regex.Pattern;
 
 public class PluginMain extends Plugin {
     private ConcurrentHashMap<String, UWPInfo> uwpInfoMap = new ConcurrentHashMap<>();
@@ -60,6 +59,7 @@ public class PluginMain extends Plugin {
     @Override
     public void textChanged(String text) {
         if (!text.isEmpty()) {
+            Pattern semicolon = RegexUtil.getPattern(";", 0);
             clearResultQueue();
             final int i = text.lastIndexOf('|');
             if (i == -1) {

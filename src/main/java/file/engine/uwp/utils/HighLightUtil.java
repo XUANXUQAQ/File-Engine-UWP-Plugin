@@ -21,7 +21,7 @@ public class HighLightUtil {
      */
     private static String highLight(String html, String[] keywords, Color highLightColor) {
         StringBuilder regexPatternBuilder = new StringBuilder();
-        List<String> collect = Arrays.stream(keywords).sorted((o1, o2) -> o2.length() - o1.length()).collect(Collectors.toList());
+        List<String> collect = Arrays.stream(keywords).sorted((o1, o2) -> o2.length() - o1.length()).toList();
         for (String keyword : collect) {
             if (!keyword.isBlank()) {
                 if (".".equals(keyword)) {
