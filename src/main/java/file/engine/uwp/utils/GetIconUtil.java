@@ -38,15 +38,20 @@ public class GetIconUtil {
         File logoLocation = file.getParentFile();
         String logoName = file.getName();
         String logoNamePrefix = removeFileNameSuffix(logoName);
-        logoNamePrefix += ".scale-";
+        String logoNamePrefixWithScale = logoNamePrefix + ".scale-";
         File[] logoFiles = logoLocation.listFiles();
-        if (logoFiles == null) {
-            return null;
-        }
-        for (File listFile : logoFiles) {
-            String logoFileName = listFile.getName();
-            if (logoFileName.startsWith(logoNamePrefix)) {
-                return changeIcon(new ImageIcon(listFile.getAbsolutePath()), MAX_WIDTH, MAX_HEIGHT);
+        if (logoFiles != null) {
+            for (File listFile : logoFiles) {
+                String logoFileName = listFile.getName();
+                if (logoFileName.startsWith(logoNamePrefixWithScale)) {
+                    return changeIcon(new ImageIcon(listFile.getAbsolutePath()), MAX_WIDTH, MAX_HEIGHT);
+                }
+            }
+            for (File listFile : logoFiles) {
+                String logoFileName = listFile.getName();
+                if (logoFileName.startsWith(logoNamePrefix)) {
+                    return changeIcon(new ImageIcon(listFile.getAbsolutePath()), MAX_WIDTH, MAX_HEIGHT);
+                }
             }
         }
         return null;
