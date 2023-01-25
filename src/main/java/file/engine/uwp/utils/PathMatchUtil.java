@@ -57,6 +57,9 @@ public class PathMatchUtil {
         }
         for (String eachCase : searchCase) {
             switch (eachCase) {
+                case "d" -> {
+                    return false;
+                }
                 case "full" -> {
                     if (!searchText.equalsIgnoreCase(name)) {
                         return false;
