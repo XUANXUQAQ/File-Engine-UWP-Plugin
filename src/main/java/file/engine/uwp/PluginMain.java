@@ -12,16 +12,14 @@ import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 public class PluginMain extends Plugin {
     private ConcurrentHashMap<String, UWPInfo> uwpInfoMap = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<String> cachedUwpInfo = new ConcurrentLinkedQueue<>();
     private String searchText;
     private String[] searchCase;
     private String[] keywords;
@@ -110,53 +108,59 @@ public class PluginMain extends Plugin {
         labelChosenColor = new Color((Integer) configs.get("labelColor"));
         labelFontColor = new Color((Integer) configs.get("fontColor"));
         highLightColor = new Color((Integer) configs.get("fontColorWithCoverage"));
-        threadPool.submit(() -> {
-            // 每隔5分钟更新uwp应用列表
-            long startFetchUwpInfoTime = 0;
-            final long timeout = 5 * 60 * 1000; // 5 min
-            while (!exitFlag) {
-                if (System.currentTimeMillis() - startFetchUwpInfoTime > timeout) {
-                    startFetchUwpInfoTime = System.currentTimeMillis();
-                    uwpInfoMap = UWPInfoUtil.getUwpInfo(uwpInfoMap);
-                    for (UWPInfo v : uwpInfoMap.values()) {
-                        if (v.getIcon() == null) {
-                            try {
-                                ImageIcon icon = GetIconUtil.getIcon(v);
-                                v.setIcon(icon);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        if (exitFlag) {
-                            break;
-                        }
+        threadPool.submit(this::scanUwpApps);
+        threadPool.submit(this::startSearchUwp);
+    }
+
+    private void startSearchUwp() {
+        final long timeout = 100;
+        while (!exitFlag) {
+            if (isStartSearch && System.currentTimeMillis() - startSearchTime > timeout) {
+                isStartSearch = false;
+                for (var uwpInfo : uwpInfoMap.entrySet()) {
+                    if (PathMatchUtil.check(uwpInfo.getValue().getDisplayName(), searchCase, searchText, keywords)) {
+                        addToResultQueue(uwpInfo.getKey());
                     }
                 }
-                try {
-                    TimeUnit.MILLISECONDS.sleep(50);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
             }
-        });
-        threadPool.submit(() -> {
-            final long timeout = 100;
-            while (!exitFlag) {
-                if (isStartSearch && System.currentTimeMillis() - startSearchTime > timeout) {
-                    isStartSearch = false;
-                    for (Map.Entry<String, UWPInfo> uwpInfo : uwpInfoMap.entrySet()) {
-                        if (PathMatchUtil.check(uwpInfo.getValue().getDisplayName(), searchCase, searchText, keywords)) {
-                            addToResultQueue(uwpInfo.getKey());
+            try {
+                TimeUnit.MILLISECONDS.sleep(50);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private void scanUwpApps() {
+        long startFetchUwpInfoTime = 0;
+        final long timeout = 60 * 1000; // 1 min
+        while (!exitFlag) {
+            if (System.currentTimeMillis() - startFetchUwpInfoTime > timeout) {
+                startFetchUwpInfoTime = System.currentTimeMillis();
+                // 每隔5分钟更新uwp应用列表
+                uwpInfoMap = UWPInfoUtil.getUwpInfo(uwpInfoMap);
+                cachedUwpInfo.removeIf(uwpInfo -> !uwpInfoMap.containsKey(uwpInfo));
+                // 获取图标
+                for (UWPInfo v : uwpInfoMap.values()) {
+                    if (v.getIcon() == null) {
+                        try {
+                            ImageIcon icon = GetIconUtil.getIcon(v);
+                            v.setIcon(icon);
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
-                }
-                try {
-                    TimeUnit.MILLISECONDS.sleep(50);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    if (exitFlag) {
+                        break;
+                    }
                 }
             }
-        });
+            try {
+                TimeUnit.MILLISECONDS.sleep(50);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /**
@@ -177,10 +181,18 @@ public class PluginMain extends Plugin {
     @Override
     public void keyReleased(KeyEvent e, String result) {
         if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-            UWPInfo uwpInfo = uwpInfoMap.get(result);
-            if (uwpInfo != null) {
-                sendEventToFileEngine("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent");
-                OpenUwpUtil.openUWP(uwpInfo);
+            openUwpAndSaveCache(result);
+        }
+    }
+
+    private void openUwpAndSaveCache(String result) {
+        UWPInfo uwpInfo = uwpInfoMap.get(result);
+        if (uwpInfo != null) {
+            sendEventToFileEngine("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent");
+            OpenUwpUtil.openUWP(uwpInfo);
+            var uwpInfoStr = uwpInfo.toString();
+            if (!cachedUwpInfo.contains(uwpInfoStr)) {
+                cachedUwpInfo.add(uwpInfoStr);
             }
         }
     }
@@ -218,11 +230,7 @@ public class PluginMain extends Plugin {
     @Override
     public void mousePressed(MouseEvent e, String result) {
         if (e.getClickCount() == 2) {
-            UWPInfo uwpInfo = uwpInfoMap.get(result);
-            if (uwpInfo != null) {
-                sendEventToFileEngine("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent");
-                OpenUwpUtil.openUWP(uwpInfo);
-            }
+            openUwpAndSaveCache(result);
         }
     }
 
