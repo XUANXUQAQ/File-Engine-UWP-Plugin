@@ -9,6 +9,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -97,13 +98,32 @@ public class PluginMain extends Plugin {
             }
         }
         File dllFile = new File(pluginFolder, "GetIndirectString.dll");
-        try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(dllFile));
+        try (var out = new BufferedOutputStream(new FileOutputStream(dllFile));
              BufferedInputStream in = new BufferedInputStream(Objects.requireNonNull(this.getClass().getResourceAsStream("/GetIndirectString.dll")))) {
             in.transferTo(out);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         System.load(dllFile.getAbsolutePath());
+        File cache = new File(pluginFolder, "cache");
+        if (!cache.exists()) {
+            try {
+                if (!cache.createNewFile()) {
+                    throw new RuntimeException("create cache failed.");
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            try (var reader = new BufferedReader(new InputStreamReader(new FileInputStream(cache), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    cachedUwpInfo.add(line);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
         backgroundColor = new Color((Integer) configs.get("defaultBackground"));
         labelChosenColor = new Color((Integer) configs.get("labelColor"));
         labelFontColor = new Color((Integer) configs.get("fontColor"));
@@ -119,6 +139,7 @@ public class PluginMain extends Plugin {
                 isStartSearch = false;
                 cachedUwpInfo.stream()
                         .map(s -> uwpInfoMap.get(s))
+                        .filter(Objects::nonNull)
                         .filter(uwpInfo -> PathMatchUtil.check(uwpInfo.getDisplayName(), searchCase, searchText, keywords))
                         .map(UWPInfo::toString)
                         .forEach(this::addToResultQueue);
@@ -198,6 +219,15 @@ public class PluginMain extends Plugin {
             var uwpInfoStr = uwpInfo.toString();
             if (!cachedUwpInfo.contains(uwpInfoStr)) {
                 cachedUwpInfo.add(uwpInfoStr);
+            }
+            File cache = new File(configsPath, "cache");
+            try (var writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(cache),  StandardCharsets.UTF_8))) {
+                for (String e : cachedUwpInfo) {
+                    writer.write(e);
+                    writer.newLine();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
     }
