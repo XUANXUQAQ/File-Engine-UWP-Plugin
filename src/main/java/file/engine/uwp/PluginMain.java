@@ -117,11 +117,16 @@ public class PluginMain extends Plugin {
         while (!exitFlag) {
             if (isStartSearch && System.currentTimeMillis() - startSearchTime > timeout) {
                 isStartSearch = false;
-                for (var uwpInfo : uwpInfoMap.entrySet()) {
-                    if (PathMatchUtil.check(uwpInfo.getValue().getDisplayName(), searchCase, searchText, keywords)) {
-                        addToResultQueue(uwpInfo.getKey());
-                    }
-                }
+                cachedUwpInfo.stream()
+                        .map(s -> uwpInfoMap.get(s))
+                        .filter(uwpInfo -> PathMatchUtil.check(uwpInfo.getDisplayName(), searchCase, searchText, keywords))
+                        .map(UWPInfo::toString)
+                        .forEach(this::addToResultQueue);
+                uwpInfoMap.entrySet()
+                        .stream()
+                        .filter(uwpInfoPair -> PathMatchUtil.check(uwpInfoPair.getValue().getDisplayName(), searchCase, searchText, keywords))
+                        .map(Map.Entry::getKey)
+                        .forEach(this::addToResultQueue);
             }
             try {
                 TimeUnit.MILLISECONDS.sleep(50);
