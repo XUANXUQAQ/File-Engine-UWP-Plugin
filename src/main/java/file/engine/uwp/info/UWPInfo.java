@@ -1,10 +1,14 @@
 package file.engine.uwp.info;
 
-import lombok.Data;
+import lombok.*;
 
 import javax.swing.*;
 
-@Data
+@EqualsAndHashCode
+@ToString
+@Getter
+@Setter
+@RequiredArgsConstructor
 public class UWPInfo {
     private String DisplayName;
     private String Architecture;
@@ -17,5 +21,7 @@ public class UWPInfo {
     private String Version;
     private String Author;
     private String ProductId;
+    @EqualsAndHashCode.Exclude
+    @ToString.Exclude
     private ImageIcon icon;
 }
