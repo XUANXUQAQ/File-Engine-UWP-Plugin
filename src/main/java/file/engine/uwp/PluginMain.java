@@ -92,6 +92,11 @@ public class PluginMain extends Plugin {
         checkEvent("file.engine.event.handler.impl.database.PrepareSearchEvent", Collections.emptyMap());
         checkEvent("file.engine.event.handler.impl.frame.searchBar.HideSearchBarEvent", Collections.emptyMap());
         File pluginFolder = new File(configsPath);
+        try {
+            VersionUtil.registerDownloadListener();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
         if (!pluginFolder.exists()) {
             if (!pluginFolder.mkdirs()) {
                 throw new RuntimeException("mkdir " + pluginFolder + "failed.");
@@ -142,12 +147,12 @@ public class PluginMain extends Plugin {
                         .filter(Objects::nonNull)
                         .filter(uwpInfo -> PathMatchUtil.check(uwpInfo.getDisplayName(), searchCase, searchText, keywords))
                         .map(UWPInfo::toString)
-                        .forEach(this::addToResultQueue);
+                        .forEach(Plugin::addToResultQueue);
                 uwpInfoMap.entrySet()
                         .stream()
                         .filter(uwpInfoPair -> PathMatchUtil.check(uwpInfoPair.getValue().getDisplayName(), searchCase, searchText, keywords))
                         .map(Map.Entry::getKey)
-                        .forEach(this::addToResultQueue);
+                        .forEach(Plugin::addToResultQueue);
             }
             try {
                 TimeUnit.MILLISECONDS.sleep(50);
@@ -523,5 +528,28 @@ public class PluginMain extends Plugin {
     @SuppressWarnings("unused")
     public String restoreFileEngineEventHandler() {
         return _pollFromRestoreQueue();
+    }
+
+    /**
+     * Do Not Remove, this is used for File-Engine to add an event listener for this plugin.
+     * The object array contains two parts.
+     * object[0] contains the fully-qualified name of class.
+     * object[1] contains a consumer to execute when the event is finished.
+     *
+     * @return Event listener
+     */
+    @SuppressWarnings("unused")
+    public Object[] pollFromEventListenerQueue() {
+        return _pollFromEventListenerQueue();
+    }
+
+    /**
+     * Do Not Remove, this is used to remove a plugin registered event listener.
+     *
+     * @return Event class fully-qualified name
+     */
+    @SuppressWarnings("unused")
+    public String[] removeFileEngineEventListener() {
+        return _pollFromRemoveListenerQueue();
     }
 }
