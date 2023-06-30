@@ -57,7 +57,7 @@ public class VersionUtil {
             long start = System.currentTimeMillis();
             while (!downloadTasks.contains(url + new File(savePath, fileName).getAbsolutePath())) {
                 if (System.currentTimeMillis() - start > 10000) {
-                    throw new RuntimeException("获取插件cmd更新信息失败");
+                    throw new RuntimeException("获取插件UWP更新信息失败");
                 }
                 TimeUnit.MILLISECONDS.sleep(100);
             }
@@ -76,7 +76,8 @@ public class VersionUtil {
             URLConnection uc = updateServer.openConnection();
             uc.setConnectTimeout(3 * 1000);
             //防止屏蔽程序抓取而返回403错误
-            uc.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.81 Safari/537.36 Edg/104.0.1293.54");
+            uc.setRequestProperty("User-Agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.81 Safari/537.36 Edg/104.0.1293.54");
             try (BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream(), StandardCharsets.UTF_8))) {
                 String eachLine;
                 while ((eachLine = br.readLine()) != null) {
